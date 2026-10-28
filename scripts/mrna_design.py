@@ -48,6 +48,7 @@ warnings.filterwarnings("ignore")
 import subprocess
 import json
 import re
+import shutil
 import sys
 import os
 
@@ -313,8 +314,8 @@ def validate_structure(mrna_sequence, out_dir):
     """RNAfold MFE of full construct. More negative = more stable."""
     print("\nRunning RNAfold structural validation...")
 
-    if subprocess.run(["which", "RNAfold"], capture_output=True).returncode != 0:
-        print("  RNAfold not found — install: sudo apt install vienna-rna")
+    if not shutil.which("RNAfold"):
+        print("  RNAfold binary not found locally — skipping structural validation plot.")
         return None, None
 
     seq_file = out_dir / "mrna_for_fold.fasta"

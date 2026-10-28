@@ -22,6 +22,10 @@ dependencies = [
     "sentencepiece>=0.2.1",
     "reportlab>=4.0.0",
     "streamlit>=1.35.0",
+]
+
+[project.optional-dependencies]
+nonfree = [
     "linearfold-unofficial>=0.1",
 ]
 

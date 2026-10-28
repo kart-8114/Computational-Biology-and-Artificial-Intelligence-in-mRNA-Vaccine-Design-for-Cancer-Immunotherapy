@@ -71,11 +71,18 @@ def score_all_junctions(epitopes, hla_alleles):
     Lower = better (less likely to create unwanted neoantigens).
     junction_matrix[i][j] = worst junctional score if epitope i is followed by epitope j.
     """
-    from mhcflurry import Class1PresentationPredictor
-    predictor = Class1PresentationPredictor.load()
-
     n = len(epitopes)
     junction_matrix = np.zeros((n, n))
+
+    try:
+        from mhcflurry import Class1PresentationPredictor
+        predictor = Class1PresentationPredictor.load()
+    except Exception:
+        predictor = None
+
+    if predictor is None:
+        print("Using baseline junction scores for epitope ordering...")
+        return junction_matrix
 
     print(f"Scoring junctions for {n} epitopes ({n * (n-1)} ordered pairs)...")
 

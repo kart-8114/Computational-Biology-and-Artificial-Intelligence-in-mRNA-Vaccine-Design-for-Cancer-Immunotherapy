@@ -33,6 +33,7 @@ Output: results/step3/hla_alleles.txt
 import argparse
 import csv
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -161,18 +162,20 @@ def remap_to_hla_ref(hla_ref, r1, r2, out_r1, out_r2):
 
 
 def run_optitype(hla_r1, hla_r2, out_dir, sample_prefix):
-    """Run OptiType via Docker against fished HLA reads (paired-end R1 + R2)."""
-    run([
-        "docker", "run", "--rm",
-        "-v", f"{hla_r1.parent}:/input",
-        "-v", f"{out_dir}:/output",
-        "fred2/optitype",
-        "-i", f"/input/{hla_r1.name}", f"/input/{hla_r2.name}",
-        "--dna",
-        "-o", "/output",
-        "-p", sample_prefix,
-        "-v",
-    ], "OptiType")
+    """Run OptiType against fished HLA reads (paired-end R1 + R2)."""
+    optitype_bin = shutil.which("OptiTypePipeline.py") or shutil.which("optitype")
+    if optitype_bin:
+        run([
+            optitype_bin,
+            "-i", str(hla_r1), str(hla_r2),
+            "--dna",
+            "-o", str(out_dir),
+            "-p", sample_prefix,
+            "-v",
+        ], "OptiType")
+    else:
+        print("\nNote: Local OptiType binary not found.")
+        print("For local execution, provide HLA alleles via the Streamlit UI or a clinical HLA allele file.")
 
 
 def parse_optitype(out_dir, sample_prefix):

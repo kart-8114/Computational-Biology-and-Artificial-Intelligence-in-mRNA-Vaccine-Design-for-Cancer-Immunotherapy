@@ -2,10 +2,11 @@
 
 > **Research use only. Not for clinical or diagnostic use.**
 
->**This project was Hacked in under 48 hours and is under active development.**
-
+> **This project is under active development.**
 
 An open-source computational pipeline for designing personalized mRNA cancer vaccines. Given tumor/normal sequencing data and a patient's HLA profile, it identifies tumor-specific neoantigens, ranks them by predicted immunogenicity, and encodes the top candidates into an optimized mRNA vaccine sequence ready for wet lab synthesis.
+
+---
 
 ## Why this exists
 
@@ -13,20 +14,20 @@ Every cancer patient's tumor carries a unique set of somatic mutations. Some of 
 
 This pipeline automates the full computational workflow: calling somatic variants from tumor/normal sequencing, predicting which mutant peptides bind the patient's specific HLA alleles, ranking candidates by predicted immunogenicity, and assembling the top epitopes into an optimized mRNA construct. The output is a FASTA file and synthesis report you can hand to a molecular biology core facility.
 
+---
 
-
-## Pipeline
+## Pipeline Overview
 
 ```
 Input: Tumor WES + Normal WES
        ↓
 Step 1: Preprocessing          → Clean BAMs             [GATK MarkDuplicates + SortSam]
 Step 2: Variant Calling        → Somatic VCF            [GATK Mutect2 + FilterMutectCalls]
-Step 3: HLA Typing             → HLA alleles            [OptiType]
+Step 3: HLA Typing             → HLA alleles            [Clinical file / Manual HLA Entry]
 Step 4: Neoantigen Prediction  → Candidate peptides     [MHCflurry 2.0]
 Step 5: Immunogenicity Ranking → Ranked neoantigen list [composite score, IMPROVE weights]
 Step 6: Epitope Ordering       → Ordered epitope string [Held-Karp exact TSP / greedy]
-Step 7: mRNA Design            → Full mRNA sequence     [VaxPress + LinearFold/RNAfold]
+Step 7: mRNA Design            → Full mRNA sequence     [VaxPress + ViennaRNA/LinearFold]
 Step 8: CodonFM Validation     → Expression scoring     [nvidia/NV-CodonFM-80M] (optional/experimental)
 Step 9: Report                 → vaccine_report.md
        ↓
@@ -39,153 +40,63 @@ Output: results/run_<sample>_<timestamp>/
 
 ---
 
-## Prerequisites
+## Getting Started (Local Setup)
 
-The following are not versioned and must be set up manually.
+### 1. Prerequisites
+- **Python 3.12+**
+- **Java 17+** (for GATK variant calling)
+- [`uv`](https://github.com/astral-sh/uv) package manager (`pip install uv`)
 
-### 1. Create required directories
-
-```bash
-mkdir -p data/test reference results
+### 2. Install Dependencies
+```powershell
+uv sync
 ```
 
-### 2. Download GATK 4.5.0.0
-
-> **Docker users: skip this step.** GATK is downloaded and configured automatically during the Docker image build.
-
-For local (non-Docker) runs only:
-
-```bash
-mkdir -p tools
-wget https://github.com/broadinstitute/gatk/releases/download/4.5.0.0/gatk-4.5.0.0.zip
-unzip gatk-4.5.0.0.zip -d tools/
-rm gatk-4.5.0.0.zip
+### 3. Create Directories
+```powershell
+mkdir "data/test", "reference", "results"
 ```
 
-### 3. Add reference genomes
-
-Download and decompress hg38 from UCSC (~900 MB download, ~3.5 GB uncompressed):
-
-```bash
+### 4. Download Reference Genome & Test Dataset
+```powershell
+# Download and decompress hg38 reference genome (~3.5 GB)
 uv run --with requests --with tqdm --no-project python scripts/download_reference.py
-```
 
-Then index inside Docker once the image is built (safe to re-run — skips existing files):
-
-```bash
-docker compose run --rm index-reference
-```
-
-| File | Used by |
-|------|---------|
-| `hg38.fa` + `hg38.fa.fai` + `hg38.dict` | Steps 2, 4 (Mutect2 / MHCflurry) |
-
-### 4. Add input data
-
-Copy `.env.example` to `.env` and add your HuggingFace token:
-
-```bash
+# Download HCC1143 tumor/normal BAM dataset
 cp .env.example .env
-# edit .env and set HF_TOKEN=your_token
-```
-
-Then run the download script:
-
-```bash
 uv run --with huggingface_hub --with python-dotenv --no-project python scripts/download_data.py
 ```
 
-This downloads the HCC1143 tumor/normal BAMs from [SlitherCode/hcc1143_cancer_and_normal_data](https://huggingface.co/datasets/SlitherCode/hcc1143_cancer_and_normal_data) into `data/test/`:
+---
 
+## Running the Web Application
+
+Launch the Streamlit interface directly from your terminal:
+
+```powershell
+uv run streamlit run app.py
 ```
-data/test/
-├── tumor_chr17.bam
-├── tumor_chr17.bai
-├── normal_chr17.bam
-└── normal_chr17.bai
+
+Open **[http://localhost:8501](http://localhost:8501)** in your browser to configure each step and run the pipeline interactively.
+
+---
+
+## Running Individual Steps via CLI
+
+You can also run steps individually via Python:
+
+```powershell
+uv run python scripts/preprocess.py
+uv run python scripts/variant.py
+uv run python scripts/neoantigen_prediction.py
+uv run python scripts/candidate_ranking.py
+uv run python scripts/epitope_ordering.py
+uv run python scripts/mrna_design.py
 ```
 
 ---
 
-## Running with Docker (experimental)
-
-### Launch the Streamlit UI
-
-```bash
-docker compose up app
-```
-
-Open [http://localhost:8501](http://localhost:8501). Configure each step in its tab and run them in order.
-
-Volumes are mounted automatically:
-
-| Host path | Container path |
-|-----------|----------------|
-| `./data` | `/app/data` |
-| `./reference` | `/app/reference` |
-| `./results` | `/app/results` |
-| `./tools` | `/app/tools` |
-
-Override paths with env vars:
-
-```bash
-DATA_DIR=/path/to/data REFERENCE_DIR=/path/to/ref docker compose up app
-```
-
-### Run individual steps via CLI
-
-```bash
-docker compose run --rm pipeline python3 scripts/preprocess.py
-docker compose run --rm pipeline python3 scripts/variant.py
-docker compose run --rm pipeline python3 scripts/neoantigen_prediction.py
-docker compose run --rm pipeline python3 scripts/candidate_ranking.py
-docker compose run --rm pipeline python3 scripts/epitope_ordering.py
-docker compose run --rm pipeline python3 scripts/mrna_design.py
-```
-
-### Step 3: HLA Typing (FALLBACK)
-
-
-### Preferred
-If you already have HLA alleles typed from clinical sequencing, use the **Manual HLA entry** panel in the Step 3 UI tab to skip OptiType entirely.
-
-
-HLA typing uses OptiType, which runs as a separate container between two phases.
-
-**Phase 1** — extract HLA reads:
-```bash
-docker compose run --rm pipeline python3 scripts/hla_typing.py --extract
-```
-
-**Phase 2** — run OptiType:
-```bash
-# Volume mapping uses /app/ inside the container
-OPTITYPE_DATA_DIR=./results/run_<id>/step3 \
-OPTITYPE_SAMPLE=hcc1143_normal \
-docker compose run --rm optitype
-```
-
-**Phase 3** — parse results:
-```bash
-docker compose run --rm pipeline python3 scripts/hla_typing.py --parse
-```
-
-
----
-
-## Running locally (without Docker)
-
-Requires Python 3.12+, Java 17+, and system packages: `bwa samtools bcftools tabix vienna-rna`.
-
-```bash
-pip install uv
-uv sync
-.venv/bin/streamlit run app.py
-```
-
----
-
-## Output
+## Output Structure
 
 Each run produces a versioned directory under `results/`:
 
@@ -205,11 +116,9 @@ The final report (`vaccine_report.md`) includes ranked candidate tables, HLA cov
 
 ---
 
-## Ranking methodology
+## Ranking Methodology
 
 Candidates are scored using a composite immunogenicity metric based on feature importance from [IMPROVE (Frontiers Immunology, 2024)](https://doi.org/10.3389/fimmu.2024.1397590):
-
-these parameters are adjustable in the streamlit ui.
 
 | Feature | Weight | Rationale |
 |---------|--------|-----------|
@@ -223,7 +132,7 @@ Candidates are flagged (but not removed) for `NEG_AGRETOPICITY` (mutant binds MH
 
 ---
 
-## Epitope ordering
+## Epitope Ordering
 
 To minimize immunogenic junctional peptides at GPGPG linker boundaries, epitope concatenation order is solved as a Hamiltonian path problem where edge weights are the worst MHCflurry presentation score across all junction peptides between each pair of epitopes. The pipeline uses:
 
@@ -232,7 +141,7 @@ To minimize immunogenic junctional peptides at GPGPG linker boundaries, epitope 
 
 ---
 
-## Known limitations
+## Known Limitations
 
 - **Chromosome scope**: The default test data covers chr17 only. Genome-wide variant calling will produce substantially more candidates.
 - **Cell line vs. primary tumor**: HCC1143 is a cell line. Clonal architecture and HLA expression differ from patient tumors.
@@ -254,22 +163,17 @@ To minimize immunogenic junctional peptides at GPGPG linker boundaries, epitope 
 - [x] Step 9: Report Generation
 - [ ] Step 8: CodonFM validation
 - [ ] Snakemake headless workflow
-- [ ] Per-step Docker containers
-- [ ] Genome-wide variant calling (currently chr17 toest data)
+- [ ] Genome-wide variant calling (currently chr17 test data)
 - [ ] NetTCR-2.2 / IEDB T cell immunogenicity integration
 
 ---
-
-### RoadMap
-- [ ] Run benchmarks starting from neoantigen generation step with public data
-- [ ] Run 1 genome wide test
-- [ ] NetTCR-2.2 / IEDB T cell immunogenicity integration
 
 ## License
 
 MIT
 
-LinearFold is provided under a Non Commercial license: if you want this fully open source use vienna
+LinearFold is provided under a non-commercial license. If you require a fully open-source alternative, use ViennaRNA.
+
 ---
 
 ## Citation

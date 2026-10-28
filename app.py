@@ -16,7 +16,7 @@ import streamlit as st
 # ── Paths / run resolver ───────────────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).parent
-VENV_PYTHON  = PROJECT_ROOT / ".venv" / "bin" / "python"
+VENV_PYTHON  = Path(sys.executable)
 SCRIPTS_DIR  = PROJECT_ROOT / "scripts"
 TOOLS_DIR    = PROJECT_ROOT / "tools"
 REFERENCE_DIR = PROJECT_ROOT / "reference"
@@ -82,7 +82,7 @@ def run_script(script_code: str, log_placeholder, step_num: int) -> bool:
     """Write a Python script to a temp file, run it with the venv Python,
     and stream stdout+stderr to the given Streamlit placeholder.
     Passes PIPELINE_RUN so all steps write into the active run directory."""
-    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False,
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False,
                                      prefix="pipeline_step_") as f:
         f.write(script_code)
         tmp_path = f.name
@@ -440,37 +440,6 @@ if not entry_b:
                 variant.TUMOR_BAM  = Path({s2_tumor_bam!r})
                 variant.NORMAL_BAM = Path({s2_normal_bam!r})
                 variant.OUT_DIR    = Path({s2_out_dir!r})
-                _orig_main = variant.main
-                def _patched_main():
-                    import subprocess, sys as _sys
-                    out = variant.OUT_DIR
-                    out.mkdir(parents=True, exist_ok=True)
-                    raw_vcf      = out / "raw_variants.vcf.gz"
-                    filtered_vcf = out / "filtered_variants.vcf.gz"
-                    variant.run(variant.gatk([
-                        "Mutect2",
-                        "-R",          str(variant.REFERENCE),
-                        "-I",          str(variant.TUMOR_BAM),
-                        "-I",          str(variant.NORMAL_BAM),
-                        "-tumor",      {s2_tumor_name!r},
-                        "-normal",     {s2_normal_name!r},
-                        "-O",          str(raw_vcf),
-                        "--intervals", {s2_intervals!r},
-                    ]), "Mutect2")
-                    variant.run(variant.gatk([
-                        "FilterMutectCalls",
-                        "-R", str(variant.REFERENCE),
-                        "-V", str(raw_vcf),
-                        "-O", str(filtered_vcf),
-                    ]), "FilterMutectCalls")
-                    result = subprocess.run(
-                        ["java", "-jar", str(variant.GATK_JAR), "CountVariants", "-V", str(filtered_vcf)],
-                        capture_output=True, text=True
-                    )
-                    print("── Variant Count ──")
-                    print(result.stdout)
-                    print(f"Step 2 complete. Output: {{filtered_vcf}}")
-                variant.main = _patched_main
                 variant.main()
             """)
             run_script(script, log2, 2)
@@ -508,17 +477,14 @@ with tabs[tab_idx]:
         st.session_state.step_status[3] = "done"
 
     # OptiType fallback — fully collapsed
-    with st.expander("OptiType fallback (CLI — no HLA from clinical typing)", expanded=False):
+    with st.expander("Local HLA file / OptiType fallback CLI instructions", expanded=False):
         st.info(
             "```bash\n"
-            "# Phase 1 — extract HLA reads\n"
-            "docker compose run --rm pipeline python3 scripts/hla_typing.py --optitype\n\n"
-            "# Phase 2 — run OptiType container\n"
-            "OPTITYPE_DATA_DIR=./results/run_<id>/step3 \\\n"
-            "OPTITYPE_SAMPLE=hcc1143_normal \\\n"
-            "docker compose run --rm optitype\n\n"
-            "# Phase 3 — parse results\n"
-            "docker compose run --rm pipeline python3 scripts/hla_typing.py --parse\n"
+            "# Clinical file approach (preferred):\n"
+            "python scripts/hla_typing.py --clinical path/to/hla.txt\n\n"
+            "# OptiType approach (local execution):\n"
+            "python scripts/hla_typing.py --optitype\n"
+            "python scripts/hla_typing.py --parse\n"
             "```"
         )
         col1, col2 = st.columns(2)

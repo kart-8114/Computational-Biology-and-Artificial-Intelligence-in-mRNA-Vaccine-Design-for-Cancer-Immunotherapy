@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [[package]]
@@ -706,7 +706,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "biopython" },
-    { name = "linearfold-unofficial" },
     { name = "matplotlib" },
     { name = "mhcflurry" },
     { name = "numpy" },
@@ -726,10 +725,15 @@ dependencies = [
     { name = "vaxpress" },
 ]
 
+[package.optional-dependencies]
+nonfree = [
+    { name = "linearfold-unofficial" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "biopython", specifier = ">=1.81" },
-    { name = "linearfold-unofficial", specifier = ">=0.1" },
+    { name = "linearfold-unofficial", marker = "extra == 'nonfree'", specifier = ">=0.1" },
     { name = "matplotlib", specifier = ">=3.7.0" },
     { name = "mhcflurry", specifier = "==2.1.5" },
     { name = "numpy", specifier = ">=1.24.0" },
@@ -748,6 +752,7 @@ requires-dist = [
     { name = "varcode", specifier = ">=1.1.0" },
     { name = "vaxpress", specifier = ">=0.9" },
 ]
+provides-extras = ["nonfree"]
 
 [[package]]
 name = "memoized-property"
