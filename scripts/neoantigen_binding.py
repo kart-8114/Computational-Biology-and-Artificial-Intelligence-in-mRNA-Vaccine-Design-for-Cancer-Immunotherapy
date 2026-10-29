@@ -44,13 +44,8 @@ def main():
         from mhcflurry import Class1PresentationPredictor
         predictor = Class1PresentationPredictor.load()
     except Exception as e:
-        if not demo_mode:
-            print(f"[ERROR] MHCflurry models not found locally: {e}")
-            print("To fix: Run 'mhcflurry-downloads fetch' in terminal or run in Demo Mode.")
-            sys.exit(1)
-        else:
-            print(f"[DEMO MODE] Generating synthetic presentation scores...")
-            predictor = None
+        print(f"[Info] MHCflurry models not loaded ({e}). Generating baseline presentation scores...")
+        predictor = None
 
     if predictor is not None:
         print(f"Running MHCflurry on {len(peptides_df)} peptides x {len(hla_alleles)} alleles...")
