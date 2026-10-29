@@ -95,25 +95,58 @@ def decompress(src: Path, dest: Path) -> None:
     print(f"Done — {dest}")
 
 
-def index_reference(fa_path: Path) -> None:
-    fai_path = fa_path.with_suffix(".fa.fai")
+def create_fai_index_python(fa_path: Path) -> None:
+    fai_path = Path(str(fa_path) + ".fai")
     if fai_path.exists():
         print(f"Reference index {fai_path.name} already exists.")
         return
 
-    print("Checking for samtools to index reference genome...")
-    samtools = shutil.which("samtools")
-    if samtools:
-        print(f"Indexing {fa_path.name} with samtools...")
-        try:
-            import subprocess
+    print(f"Generating FASTA index {fai_path.name}...")
+    offset = 0
+    name = None
+    length = 0
+    line_blen = 0
+    line_len = 0
+    curr_offset = 0
 
-            subprocess.run([samtools, "faidx", str(fa_path)], check=True)
-            print("Indexing complete.")
-        except Exception as e:
-            print(f"Indexing warning: {e}")
-    else:
-        print("Note: Install samtools locally if .fai index is required by downstream tools.")
+    with open(fa_path, "rb") as f_in, open(fai_path, "w", encoding="utf-8") as f_out:
+        for line in f_in:
+            line_bytes = len(line)
+            if line.startswith(b">"):
+                if name is not None:
+                    f_out.write(f"{name}\t{length}\t{curr_offset}\t{line_blen}\t{line_len}\n")
+                name = line[1:].split()[0].decode("ascii", errors="ignore")
+                length = 0
+                line_blen = 0
+                line_len = 0
+                curr_offset = offset + line_bytes
+            else:
+                clean_len = len(line.rstrip(b"\r\n"))
+                if line_blen == 0:
+                    line_len = line_bytes
+                    line_blen = clean_len
+                length += clean_len
+            offset += line_bytes
+        if name is not None:
+            f_out.write(f"{name}\t{length}\t{curr_offset}\t{line_blen}\t{line_len}\n")
+    print(f"FASTA index created: {fai_path}")
+
+
+def index_reference(fa_path: Path) -> None:
+    fai_path = Path(str(fa_path) + ".fai")
+    if not fai_path.exists():
+        samtools = shutil.which("samtools")
+        if samtools:
+            print(f"Indexing {fa_path.name} with samtools...")
+            try:
+                import subprocess
+
+                subprocess.run([samtools, "faidx", str(fa_path)], check=True)
+                print("Indexing complete.")
+            except Exception:
+                create_fai_index_python(fa_path)
+        else:
+            create_fai_index_python(fa_path)
 
 
 if __name__ == "__main__":

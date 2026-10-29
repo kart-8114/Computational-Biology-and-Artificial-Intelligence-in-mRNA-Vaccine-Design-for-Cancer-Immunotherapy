@@ -52,6 +52,19 @@ def gatk(args):
     java_exec = find_java() or "java"
     return [java_exec, "-jar", str(GATK_JAR)] + args
 
+def ensure_reference_indexed(fa_path):
+    if not fa_path.exists():
+        return
+    fai_path = _Path(str(fa_path) + ".fai")
+    if not fai_path.exists():
+        import download_reference
+        download_reference.create_fai_index_python(fa_path)
+    dict_path = fa_path.with_suffix(".dict")
+    if not dict_path.exists() and GATK_JAR.exists():
+        print(f"Creating sequence dictionary {dict_path.name}...")
+        java_exec = find_java() or "java"
+        subprocess.run([java_exec, "-jar", str(GATK_JAR), "CreateSequenceDictionary", "-R", str(fa_path), "-O", str(dict_path)], check=True)
+
 def create_fallback_vcf(out_vcf):
     vcf_content = textwrap.dedent("""\
         ##fileformat=VCFv4.2
@@ -89,6 +102,9 @@ def main():
         print(f"\n== Variant Count ==\n5 somatic variants loaded")
         print(f"Step 2 complete. Output: {filtered_vcf}")
         return
+
+    # Ensure reference genome has .fai index and .dict sequence dictionary
+    ensure_reference_indexed(REFERENCE)
 
     # Step 2a: Mutect2 — somatic variant caller
     # Compares tumor vs normal, flags positions where tumor differs
