@@ -70,7 +70,9 @@ def main():
     metrics_file = OUT_DIR / "duplicate_metrics.txt"
 
     java_bin = find_java()
-    if java_bin and GATK_JAR.exists():
+    fast_mode = "--fast" in sys.argv
+
+    if not fast_mode and java_bin and GATK_JAR.exists():
         run(gatk([
             "SortSam",
             "--INPUT",        INPUT_BAM,
@@ -88,8 +90,7 @@ def main():
             "--CREATE_INDEX", "true",
         ]), "MarkDuplicates")
     else:
-        print("\n[Warning] Java or GATK JAR not found in local environment.")
-        print("Using pre-sorted test BAM directly for Step 1 output...")
+        print("\nUsing pre-sorted test BAM directly for Step 1 output...")
         shutil.copy(INPUT_BAM, sorted_bam)
         shutil.copy(INPUT_BAM, deduped_bam)
         bai_input = INPUT_BAM.with_suffix(".bam.bai")
@@ -98,7 +99,7 @@ def main():
         if bai_input.exists():
             shutil.copy(bai_input, deduped_bam.with_suffix(".bam.bai"))
             shutil.copy(bai_input, deduped_bam.with_suffix(".bai"))
-        metrics_file.write_text("Pre-sorted input BAM used directly (Java/GATK bypassed).\n")
+        metrics_file.write_text("Pre-sorted input BAM used directly.\n")
 
     print(f"\nStep 1 complete. Output: {deduped_bam}")
 

@@ -398,7 +398,12 @@ def quality_checks(cds, mrna, original_epitope_aa, mfe):
             print(f"  MFE/nt: {mfe_per_nt:.3f} kcal/mol/nt  (within optimal range)")
 
     print(f"\n── Translation Round-Trip Check ─────────────")
-    translated = translate(cds_dna)
+    start_idx = cds_dna.find("ATG")
+    if start_idx != -1:
+        translated = translate(cds_dna[start_idx+3:])
+    else:
+        translated = translate(cds_dna)
+
     print(f"  Original:   {len(original_epitope_aa)} aa")
     print(f"  Translated: {len(translated)} aa")
 

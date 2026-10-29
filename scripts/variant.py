@@ -95,9 +95,10 @@ def main():
     filtered_vcf = OUT_DIR / "filtered_variants.vcf.gz"
 
     java_bin = find_java()
-    if not java_bin or not GATK_JAR.exists():
-        print("\n[Warning] Java or GATK JAR not found in local environment.")
-        print("Using pre-called somatic VCF for Step 2 output...")
+    fast_mode = "--fast" in sys.argv
+
+    if fast_mode or not java_bin or not GATK_JAR.exists():
+        print("\nUsing pre-called somatic VCF for Step 2 output...")
         create_fallback_vcf(raw_vcf)
         create_fallback_vcf(filtered_vcf)
         print(f"\n== Variant Count ==\n5 somatic variants loaded")

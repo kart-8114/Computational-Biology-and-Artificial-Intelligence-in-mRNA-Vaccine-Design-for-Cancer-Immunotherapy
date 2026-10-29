@@ -567,7 +567,8 @@ def section_candidates(lines, df5, hla_alleles, df5_sub):
     ]
 
     # Flag callout
-    flagged = df5[df5.get("flags", pd.Series(dtype=str)).str.contains("NEG_AGRETOPICITY", na=False)]
+    flag_series = df5["flags"].fillna("").astype(str) if "flags" in df5.columns else pd.Series("", index=df5.index)
+    flagged = df5[flag_series.str.contains("NEG_AGRETOPICITY", na=False)]
     if not flagged.empty:
         lines += [
             "### Flag: NEG_AGRETOPICITY candidates",
@@ -962,7 +963,7 @@ def main():
     section_limitations(lines)
     section_methods(lines)
 
-    OUT_MD.write_text("\n".join(lines))
+    OUT_MD.write_text("\n".join(lines), encoding="utf-8")
 
     print(f"Step 9 complete.")
     print(f"  Markdown: {OUT_MD}")
