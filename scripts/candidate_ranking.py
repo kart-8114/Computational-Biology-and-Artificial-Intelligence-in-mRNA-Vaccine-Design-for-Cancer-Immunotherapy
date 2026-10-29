@@ -276,10 +276,10 @@ def print_hla_coverage(df, hla_alleles):
     A balanced vaccine should cover all patient alleles. Zero coverage
     for an allele means those T cells have no vaccine targets.
     """
-    print("\n── HLA Coverage (top candidates) ──")
+    print("\n== HLA Coverage (top candidates) ==")
     for allele in hla_alleles:
         count = (df["best_allele"] == allele).sum()
-        bar = "█" * count
+        bar = "#" * count
         print(f"  {allele:20s}: {count:3d}  {bar}")
     alleles_with_zero = [a for a in hla_alleles if (df["best_allele"] == a).sum() == 0]
     if alleles_with_zero:
@@ -325,7 +325,7 @@ def main():
         print(f"\n  Subclonal candidates (VAF < {MIN_VAF}) saved to: "
               f"{OUT_DIR / 'subclonal_filtered.tsv'}")
 
-    print(f"\n── Top {TOP_N} Vaccine Candidates ──")
+    print(f"\n== Top {TOP_N} Vaccine Candidates ==")
     cols = ["mutation_id", "peptide", "best_allele",
             "affinity", "presentation_score", "agretopicity",
             "vaf", "composite_score", "flags"]
@@ -333,14 +333,14 @@ def main():
 
     flagged = top[top["flags"] != ""]
     if not flagged.empty:
-        print(f"\n── Flagged Candidates ({len(flagged)}) ──")
+        print(f"\n== Flagged Candidates ({len(flagged)}) ==")
         print("  These passed all filters but warrant manual review before synthesis:")
         for _, row in flagged.iterrows():
             print(f"  {row['peptide']:12s}  {row['flags']}")
 
     print_hla_coverage(top, hla_alleles)
 
-    print(f"\n── Step 5 Summary ──")
+    print(f"\n== Step 5 Summary ==")
     print(f"  Input:              {n_input}")
     print(f"  After filters:      {len(df)}")
     print(f"  Subclonal removed:  {len(df_low_vaf)} (VAF < {MIN_VAF})")

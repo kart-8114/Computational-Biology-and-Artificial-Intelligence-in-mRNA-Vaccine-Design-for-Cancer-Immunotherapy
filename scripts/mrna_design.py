@@ -296,13 +296,13 @@ def assemble_construct(cds):
     full_mrna    = utr5_rna + kozak_rna + cds_rna + utr3_rna + poly_a
     cds_full_rna = kozak_rna + cds_rna  # [FIXED] full CDS including AUG
 
-    print(f"\n── mRNA Construct Assembly ──────────────────")
+    print(f"\n== mRNA Construct Assembly ==")
     print(f"  5' UTR:      {len(utr5_rna):>5} nt  (human beta-globin)")
     print(f"  Kozak + AUG: {len(kozak_rna):>5} nt")
     print(f"  CDS:         {len(cds_full_rna):>5} nt  (VaxPress optimized, includes AUG)")
     print(f"  3' UTR:      {len(utr3_rna):>5} nt  (human beta-globin)")
     print(f"  Poly-A:      {len(poly_a):>5} nt")
-    print(f"  ─────────────────────────────────────────────")
+    print(f"  =============================================")
     print(f"  Total:       {len(full_mrna):>5} nt")
 
     return full_mrna, cds_full_rna

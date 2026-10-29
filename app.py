@@ -154,6 +154,8 @@ def run_script(script_code: str, log_placeholder, step_num: int) -> bool:
 
     env = os.environ.copy()
     env["PIPELINE_RUN"] = st.session_state.run_id
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
 
     try:
         process = subprocess.Popen(

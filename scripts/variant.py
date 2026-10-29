@@ -60,7 +60,7 @@ def main():
         print("Using pre-called somatic VCF for Step 2 output...")
         create_fallback_vcf(raw_vcf)
         create_fallback_vcf(filtered_vcf)
-        print(f"\n── Variant Count ──\n5 somatic variants loaded")
+        print(f"\n== Variant Count ==\n5 somatic variants loaded")
         print(f"Step 2 complete. Output: {filtered_vcf}")
         return
 
@@ -90,7 +90,7 @@ def main():
         ["java", "-jar", str(GATK_JAR), "CountVariants", "-V", str(filtered_vcf)],
         capture_output=True, text=True
     )
-    print(f"\n── Variant Count ──")
+    print(f"\n== Variant Count ==")
     print(result.stdout)
     print(f"Step 2 complete. Output: {filtered_vcf}")
 

@@ -70,7 +70,7 @@ def write_alleles(alleles, out_file, source):
     with open(out_file, "w") as f:
         for a in alleles:
             f.write(a + "\n")
-    print(f"\n── HLA Alleles ({source}) ──")
+    print(f"\n== HLA Alleles ({source}) ==")
     for a in alleles:
         print(f"  {a}")
     print(f"\nStep 3 complete. Alleles saved to: {out_file}")

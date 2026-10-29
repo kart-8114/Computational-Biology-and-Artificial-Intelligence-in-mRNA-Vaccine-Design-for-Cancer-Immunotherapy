@@ -181,7 +181,7 @@ def main():
     peptides_file = OUT_DIR / "candidate_peptides.tsv"
     peptides_df.to_csv(peptides_file, sep="\t", index=False)
 
-    print(f"\n── Step 4a Summary ──")
+    print(f"\n== Step 4a Summary ==")
     print(f"  Variants processed:  {len(variants_df)}")
     print(f"  Candidate peptides:  {len(peptides_df)}")
     print(f"\nStep 4a complete. Output: {peptides_file}")

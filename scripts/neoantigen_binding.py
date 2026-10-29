@@ -76,7 +76,7 @@ def main():
     output_file = OUT_DIR / "candidate_neoantigens.tsv"
     merged.to_csv(output_file, sep="\t", index=False)
 
-    print(f"\n── Step 4b Summary ──")
+    print(f"\n== Step 4b Summary ==")
     print(f"  Peptides input:      {before}")
     print(f"  Binders retained:    {len(merged)}")
     print(f"\nStep 4b complete. Output: {output_file}")
