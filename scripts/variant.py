@@ -12,7 +12,8 @@ from paths import BASE, step_dir
 
 GATK_JAR   = BASE / "tools/gatk-4.5.0.0/gatk-package-4.5.0.0-local.jar"
 REFERENCE  = BASE / "reference/hg38.fa"
-TUMOR_BAM  = step_dir(1) / "marked_duplicates.bam"
+tumor_bam_step1 = step_dir(1) / "marked_duplicates.bam"
+TUMOR_BAM  = tumor_bam_step1 if tumor_bam_step1.exists() else (BASE / "data/test/tumor_chr17.bam")
 NORMAL_BAM = BASE / "data/test/normal_chr17.bam"
 OUT_DIR    = step_dir(2)
 
@@ -129,7 +130,7 @@ def main():
 
     # Count variants found
     result = subprocess.run(
-        ["java", "-jar", str(GATK_JAR), "CountVariants", "-V", str(filtered_vcf)],
+        gatk(["CountVariants", "-V", str(filtered_vcf)]),
         capture_output=True, text=True
     )
     print(f"\n== Variant Count ==")
