@@ -95,13 +95,19 @@ def main():
     filtered_vcf = OUT_DIR / "filtered_variants.vcf.gz"
 
     java_bin = find_java()
-    fast_mode = "--fast" in sys.argv
+    demo_mode = os.environ.get("DEMO_MODE", "0") == "1" or "--demo" in sys.argv or "--fast" in sys.argv
 
-    if fast_mode or not java_bin or not GATK_JAR.exists():
-        print("\nUsing pre-called somatic VCF for Step 2 output...")
+    if not demo_mode and not (java_bin and GATK_JAR.exists()):
+        print("\n[ERROR] Java 17+ or GATK 4.5 JAR not found in local environment.")
+        print("Real variant calling mode requires GATK Mutect2 and OpenJDK 17.")
+        print("To fix: Install Java 17, provide an existing VCF file for Step 4, or run in Demo Mode.")
+        sys.exit(1)
+
+    if demo_mode:
+        print("\n[DEMO MODE] Generating synthetic somatic VCF for Step 2 output...")
         create_fallback_vcf(raw_vcf)
         create_fallback_vcf(filtered_vcf)
-        print(f"\n== Variant Count ==\n5 somatic variants loaded")
+        print(f"\n== Variant Count ==\n5 somatic variants loaded (DEMO MODE)")
         print(f"Step 2 complete. Output: {filtered_vcf}")
         return
 

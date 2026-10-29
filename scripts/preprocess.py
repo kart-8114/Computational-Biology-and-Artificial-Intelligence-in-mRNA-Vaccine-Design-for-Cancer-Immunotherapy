@@ -70,9 +70,15 @@ def main():
     metrics_file = OUT_DIR / "duplicate_metrics.txt"
 
     java_bin = find_java()
-    fast_mode = "--fast" in sys.argv
+    demo_mode = os.environ.get("DEMO_MODE", "0") == "1" or "--demo" in sys.argv or "--fast" in sys.argv
 
-    if not fast_mode and java_bin and GATK_JAR.exists():
+    if not demo_mode and not (java_bin and GATK_JAR.exists()):
+        print("\n[ERROR] Java 17+ or GATK 4.5 JAR not found in local environment.")
+        print("Real preprocessing mode requires GATK 4.5 and OpenJDK 17.")
+        print("To fix: Install Java 17 (Eclipse Adoptium Temurin 17) or run in Demo Mode.")
+        sys.exit(1)
+
+    if not demo_mode and java_bin and GATK_JAR.exists():
         run(gatk([
             "SortSam",
             "--INPUT",        INPUT_BAM,
@@ -90,7 +96,7 @@ def main():
             "--CREATE_INDEX", "true",
         ]), "MarkDuplicates")
     else:
-        print("\nUsing pre-sorted test BAM directly for Step 1 output...")
+        print("\n[DEMO MODE] Generating synthetic preprocessed BAM output...")
         shutil.copy(INPUT_BAM, sorted_bam)
         shutil.copy(INPUT_BAM, deduped_bam)
         bai_input = INPUT_BAM.with_suffix(".bam.bai")
@@ -99,7 +105,7 @@ def main():
         if bai_input.exists():
             shutil.copy(bai_input, deduped_bam.with_suffix(".bam.bai"))
             shutil.copy(bai_input, deduped_bam.with_suffix(".bai"))
-        metrics_file.write_text("Pre-sorted input BAM used directly.\n")
+        metrics_file.write_text("DEMO MODE: Synthetic preprocessed BAM generated.\n")
 
     print(f"\nStep 1 complete. Output: {deduped_bam}")
 

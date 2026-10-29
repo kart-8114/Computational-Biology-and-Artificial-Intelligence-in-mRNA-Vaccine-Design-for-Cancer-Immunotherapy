@@ -244,7 +244,7 @@ def codon_optimize(epitope_aa, out_dir, weights):
     result = subprocess.run(cmd, text=True)
 
     if result.returncode != 0:
-        print("VaxPress failed, falling back to simple codon optimization...")
+        print("VaxPress unavailable on native Windows — using Human Frequency Codon Optimization Fallback...")
         return simple_codon_optimize(epitope_aa)
 
     optimized_file = vaxpress_out / "result.fasta"
@@ -253,7 +253,7 @@ def codon_optimize(epitope_aa, out_dir, weights):
         if fastas:
             optimized_file = fastas[0]
         else:
-            print("VaxPress output not found, falling back")
+            print("VaxPress output not found — using Human Frequency Codon Optimization Fallback...")
             return simple_codon_optimize(epitope_aa)
 
     optimized_cds = read_fasta(optimized_file).upper().replace("U", "T")

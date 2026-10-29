@@ -82,6 +82,20 @@ def test_fallback_peptide_generation():
     assert p_df.iloc[0]["gene"] == "TP53"
 
 
+def test_ranking_weights_sum_to_one():
+    """Verify that IMPROVE immunogenicity weights sum to exactly 1.00."""
+    total_weight = (
+        candidate_ranking.W_PRESENTATION +
+        candidate_ranking.W_AGRETOPICITY +
+        candidate_ranking.W_VAF +
+        candidate_ranking.W_BLOSUM +
+        candidate_ranking.W_FOREIGNNESS
+    )
+    assert abs(total_weight - 1.0) < 1e-5
+    assert candidate_ranking.W_FOREIGNNESS == 0.05
+    assert candidate_ranking.W_BLOSUM == 0.10
+
+
 def test_ranking_weights_and_normalization():
     """Test IMPROVE immunogenicity score weighting and normalization."""
     df = pd.DataFrame([
@@ -111,18 +125,12 @@ def test_ranking_weights_and_normalization():
         },
     ])
 
-    total_weight = (
-        candidate_ranking.W_PRESENTATION +
-        candidate_ranking.W_AGRETOPICITY +
-        candidate_ranking.W_VAF +
-        candidate_ranking.W_BLOSUM +
-        candidate_ranking.W_FOREIGNNESS
-    )
-    assert abs(total_weight - 1.0) < 1e-5
-
     df = candidate_ranking.compute_blosum_score(df)
+    assert "foreignness_score" in df.columns
+
     scored_df = candidate_ranking.score_candidates(df)
     assert "composite_score" in scored_df.columns
+    assert "score_foreignness" in scored_df.columns
     assert scored_df.iloc[0]["composite_score"] >= scored_df.iloc[1]["composite_score"]
 
 

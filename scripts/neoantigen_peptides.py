@@ -157,22 +157,33 @@ def generate_fallback_peptides(variants_df):
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    demo_mode = os.environ.get("DEMO_MODE", "0") == "1" or "--demo" in sys.argv or "--fast" in sys.argv
+
     hla_alleles = load_hla_alleles(HLA_FILE)
     variants_df = parse_vcf(VCF_FILE)
 
     if variants_df.empty:
-        print("No variants found. Exiting.")
+        print("[ERROR] No variants found in VCF file. Exiting.")
         sys.exit(1)
 
     try:
         peptides_df = extract_peptides(variants_df, PEPTIDE_LENGTHS)
     except Exception as e:
-        print(f"Warning during peptide extraction ({e}). Using fallback test peptides...")
-        peptides_df = pd.DataFrame()
+        if demo_mode:
+            print(f"Warning during peptide extraction ({e}). Using demo test peptides...")
+            peptides_df = pd.DataFrame()
+        else:
+            print(f"[ERROR] Failed to extract peptides with PyEnsembl: {e}")
+            print("Run 'pyensembl install --release 109 --species homo_sapiens' or use Demo Mode.")
+            sys.exit(1)
 
     if peptides_df.empty:
-        print("Using test candidate peptides for Step 4 output...")
-        peptides_df = generate_fallback_peptides(variants_df)
+        if demo_mode:
+            print("Using test candidate peptides for Step 4 output (DEMO MODE)...")
+            peptides_df = generate_fallback_peptides(variants_df)
+        else:
+            print("[ERROR] No candidate coding peptides generated from input VCF.")
+            sys.exit(1)
 
     # Save HLA alleles alongside peptides so Step 4b can read them
     hla_out = OUT_DIR / "hla_alleles_4b.txt"

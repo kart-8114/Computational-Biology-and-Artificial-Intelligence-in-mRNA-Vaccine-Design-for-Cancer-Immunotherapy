@@ -37,20 +37,19 @@ def main():
         hla_alleles = [l.strip() for l in f if l.strip()]
     print(f"HLA alleles: {hla_alleles}")
 
+    demo_mode = os.environ.get("DEMO_MODE", "0") == "1" or "--demo" in sys.argv or "--fast" in sys.argv
+
     predictor = None
     try:
         from mhcflurry import Class1PresentationPredictor
         predictor = Class1PresentationPredictor.load()
     except Exception as e:
-        print(f"[Info] MHCflurry models not found locally ({e}).")
-        print("Downloading MHCflurry models...")
-        try:
-            import subprocess
-            subprocess.run([sys.executable, "-m", "mhcflurry.downloads", "fetch"], check=True)
-            from mhcflurry import Class1PresentationPredictor
-            predictor = Class1PresentationPredictor.load()
-        except Exception as err:
-            print(f"[Warning] Could not load MHCflurry models ({err}). Generating binding scores...")
+        if not demo_mode:
+            print(f"[ERROR] MHCflurry models not found locally: {e}")
+            print("To fix: Run 'mhcflurry-downloads fetch' in terminal or run in Demo Mode.")
+            sys.exit(1)
+        else:
+            print(f"[DEMO MODE] Generating synthetic presentation scores...")
             predictor = None
 
     if predictor is not None:

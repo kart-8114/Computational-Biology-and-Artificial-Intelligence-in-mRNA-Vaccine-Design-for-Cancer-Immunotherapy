@@ -33,12 +33,12 @@ STEP4_OUTPUT = step_dir(4) / "candidate_neoantigens.tsv"
 HLA_FILE     = step_dir(3) / "hla_alleles.txt"
 OUT_DIR      = step_dir(5)
 
-# Weights based on IMPROVE feature importance analysis
+# Weights based on IMPROVE feature importance analysis (Frontiers Immunology 2024)
 W_PRESENTATION = 0.40
 W_AGRETOPICITY = 0.25
 W_VAF          = 0.20
-W_BLOSUM       = 0.15  # Increased from 0.10 since foreignness removed as redundant
-W_FOREIGNNESS  = 0.00  # Removed — captured by blosum_score, was double-counting
+W_BLOSUM       = 0.10
+W_FOREIGNNESS  = 0.05
 
 # Filters
 MAX_AFFINITY_NM  = 500
@@ -162,17 +162,25 @@ def compute_blosum_score(df):
     """
     BLOSUM62 score at mutated positions only.
     Lower score = more radical substitution = more foreign to immune system.
-    This is the primary foreignness signal — foreignness feature removed as redundant.
     """
     scores = []
+    foreignness_scores = []
     for _, row in df.iterrows():
         mut, wt = row["peptide"], row["wt_peptide"]
         if not isinstance(wt, str) or len(mut) != len(wt):
             scores.append(0)
+            foreignness_scores.append(1.0)
             continue
         changed = [blosum62(a, b) for a, b in zip(wt, mut) if a != b]
         scores.append(np.mean(changed) if changed else 0)
+
+        sim = sum(blosum62(a, b) for a, b in zip(wt, mut))
+        max_sim = sum(blosum62(a, a) for a in mut)
+        foreignness = 1.0 - (sim / max(max_sim, 1))
+        foreignness_scores.append(max(0.0, float(foreignness)))
+
     df["blosum_score"] = scores
+    df["foreignness_score"] = foreignness_scores
     return df
 
 
@@ -189,11 +197,15 @@ def score_candidates(df):
     bl = df["blosum_score"]
     df["score_blosum"] = 1 - (bl - bl.min()) / (bl.max() - bl.min() + 1e-9)
 
+    f_val = df.get("foreignness_score", df["score_blosum"])
+    df["score_foreignness"] = (f_val - f_val.min()) / (f_val.max() - f_val.min() + 1e-9)
+
     df["composite_score"] = (
         W_PRESENTATION * df["score_presentation"] +
         W_AGRETOPICITY * df["score_agretopicity"] +
         W_VAF          * df["score_vaf"] +
-        W_BLOSUM       * df["score_blosum"]
+        W_BLOSUM       * df["score_blosum"] +
+        W_FOREIGNNESS  * df["score_foreignness"]
     )
     return df
 

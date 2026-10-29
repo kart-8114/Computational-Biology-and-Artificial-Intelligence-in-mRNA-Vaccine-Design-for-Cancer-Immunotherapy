@@ -156,6 +156,7 @@ def run_script(script_code: str, log_placeholder, step_num: int) -> bool:
     env["PIPELINE_RUN"] = st.session_state.run_id
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
+    env["DEMO_MODE"] = "1" if st.session_state.get("demo_mode", False) else "0"
 
     try:
         process = subprocess.Popen(
@@ -228,6 +229,13 @@ with st.sidebar:
         key="entry_point",
     )
     entry_b = entry_point.startswith("B")
+
+    demo_mode_active = st.toggle(
+        "⚡ Synthetic Demo Mode",
+        value=False,
+        key="demo_mode",
+        help="Run pipeline stages using fast deterministic synthetic test fixtures without requiring full human genome references or ML model weights.",
+    )
 
     st.divider()
     st.subheader("Active Run")
