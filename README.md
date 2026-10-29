@@ -1,22 +1,22 @@
-# mRNA Vaccine Pipeline
+# OpenMrnaVaxGen — mRNA Vaccine Pipeline
 
 > **Research use only. Not for clinical or diagnostic use.**
 
-> **This project is under active development.**
+> **This project is an open-source computational pipeline for personalized cancer vaccine design.**
 
-An open-source computational pipeline for designing personalized mRNA cancer vaccines. Given tumor/normal sequencing data and a patient's HLA profile, it identifies tumor-specific neoantigens, ranks them by predicted immunogenicity, and encodes the top candidates into an optimized mRNA vaccine sequence ready for wet lab synthesis.
+OpenMrnaVaxGen automates the computational workflow for personalized mRNA cancer vaccines. Given tumor/normal sequencing data and a patient's HLA profile, it identifies tumor-specific neoantigens, ranks them by predicted immunogenicity, and encodes the top candidates into an optimized mRNA vaccine sequence ready for wet lab synthesis.
 
 ---
 
 ## Why this exists
 
-Every cancer patient's tumor carries a unique set of somatic mutations. Some of those mutations produce altered proteins that the immune system can, in principle, recognize as foreign — these are called **neoantigens**. Which neoantigens are visible to the immune system depends on the patient's HLA alleles, which determine what peptide fragments get displayed on the cell surface.
+Every cancer patient's tumor carries a unique set of somatic mutations. Some of those mutations produce altered proteins that the immune system can recognize as foreign — these are called **neoantigens**. Which neoantigens are visible to the immune system depends on the patient's HLA alleles, which determine what peptide fragments get displayed on the cell surface.
 
-This pipeline automates the full computational workflow: calling somatic variants from tumor/normal sequencing, predicting which mutant peptides bind the patient's specific HLA alleles, ranking candidates by predicted immunogenicity, and assembling the top epitopes into an optimized mRNA construct. The output is a FASTA file and synthesis report you can hand to a molecular biology core facility.
+This pipeline automates the computational workflow: calling somatic variants from tumor/normal sequencing, predicting which mutant peptides bind the patient's specific HLA alleles, ranking candidates by predicted immunogenicity, and assembling the top epitopes into an optimized mRNA construct.
 
 ---
 
-## Pipeline Overview
+## Pipeline Architecture
 
 ```
 Input: Tumor WES + Normal WES
@@ -40,7 +40,7 @@ Output: results/run_<sample>_<timestamp>/
 
 ---
 
-## Getting Started (Local Setup)
+## Quickstart & Installation
 
 ### 1. Prerequisites
 - **Python 3.12+**
@@ -52,7 +52,7 @@ Output: results/run_<sample>_<timestamp>/
 uv sync
 ```
 
-### 3. Create Directories
+### 3. Create Required Directories
 ```powershell
 mkdir "data/test", "reference", "results"
 ```
@@ -69,25 +69,41 @@ uv run --with huggingface_hub --with python-dotenv --no-project python scripts/d
 
 ---
 
-## Running the Web Application
+## Running the Application
 
-Launch the Streamlit interface directly from your terminal:
+### 1. Web Application (Streamlit UI)
+Launch the interactive web application directly from your terminal:
 
 ```powershell
 uv run streamlit run app.py
 ```
 
-Open **[http://localhost:8501](http://localhost:8501)** in your browser to configure each step and run the pipeline interactively.
+Open **[http://localhost:8501](http://localhost:8501)** in your browser. The Overview tab includes an interactive **Preflight System Check** panel that verifies local tool and database availability.
+
+### 2. Fast Synthetic Demo Mode (~2 seconds)
+Run the full pipeline end-to-end without downloading large human reference genomes or ML model weights:
+
+```powershell
+uv run python main.py --demo
+```
+
+### 3. Run Automated Tests
+Run the automated test suite using `pytest`:
+
+```powershell
+uv run pytest
+```
 
 ---
 
 ## Running Individual Steps via CLI
 
-You can also run steps individually via Python:
+You can also execute individual pipeline steps from the command line:
 
 ```powershell
 uv run python scripts/preprocess.py
 uv run python scripts/variant.py
+uv run python scripts/hla_typing.py --clinical data/test/sample_hla.txt
 uv run python scripts/neoantigen_prediction.py
 uv run python scripts/candidate_ranking.py
 uv run python scripts/epitope_ordering.py
@@ -116,7 +132,7 @@ The final report (`vaccine_report.md`) includes ranked candidate tables, HLA cov
 
 ---
 
-## Ranking Methodology
+## Ranking Methodology (IMPROVE Model)
 
 Candidates are scored using a composite immunogenicity metric based on feature importance from [IMPROVE (Frontiers Immunology, 2024)](https://doi.org/10.3389/fimmu.2024.1397590):
 
@@ -132,7 +148,7 @@ Candidates are flagged (but not removed) for `NEG_AGRETOPICITY` (mutant binds MH
 
 ---
 
-## Epitope Ordering
+## Epitope Ordering (Held-Karp TSP)
 
 To minimize immunogenic junctional peptides at GPGPG linker boundaries, epitope concatenation order is solved as a Hamiltonian path problem where edge weights are the worst MHCflurry presentation score across all junction peptides between each pair of epitopes. The pipeline uses:
 
@@ -141,48 +157,22 @@ To minimize immunogenic junctional peptides at GPGPG linker boundaries, epitope 
 
 ---
 
-## Known Limitations
+## Scientific Background & Disclaimers
 
-- **Chromosome scope**: The default test data covers chr17 only. Genome-wide variant calling will produce substantially more candidates.
-- **Cell line vs. primary tumor**: HCC1143 is a cell line. Clonal architecture and HLA expression differ from patient tumors.
-- **No TCR validation**: Candidates are selected on MHC binding/presentation scores only. NetTCR-2.2 or IEDB T cell immunogenicity scoring is not currently integrated.
-- **MFE/nt metric**: The LinearDesign optimal range (−0.48 to −0.60 kcal/mol/nt) was derived from full-length protein antigens; short polyepitope constructs (~870 nt) will fall outside this range due to UTR dilution — this is expected, not a failure.
-- **CodonFM validation**: Step 8 (nvidia/NV-CodonFM-80M scoring) is implemented as a placeholder. Empirical HEK293T expression testing is the recommended ranking method for now.
+Inspired by the research review:
+> *"Computational biology and artificial intelligence in mRNA vaccine design for cancer immunotherapy"* (PMC11788159)
 
----
-
-## Status
-
-- [x] Step 1: Preprocessing
-- [x] Step 2: Variant Calling
-- [x] Step 3: HLA Typing
-- [x] Step 4: Neoantigen Prediction
-- [x] Step 5: Immunogenicity Ranking
-- [x] Step 6: Epitope Ordering
-- [x] Step 7: mRNA Design
-- [x] Step 9: Report Generation
-- [ ] Step 8: CodonFM validation
-- [ ] Snakemake headless workflow
-- [ ] Genome-wide variant calling (currently chr17 test data)
-- [ ] NetTCR-2.2 / IEDB T cell immunogenicity integration
+**Disclaimer**: This repository is an open-source research software prototype. Computationally prioritized neoantigens are research candidates and are **not** clinically validated vaccine recommendations.
 
 ---
 
-## License
+## License & Citations
 
-MIT
+Licensed under the **MIT License**.
 
-LinearFold is provided under a non-commercial license. If you require a fully open-source alternative, use ViennaRNA.
-
----
-
-## Citation
-
-If you use this pipeline in your research, please cite the tools it depends on:
-
+If you use this pipeline in your research, please cite the underlying tools:
 - **MHCflurry**: O'Donnell et al., *Cell Systems*, 2020
 - **VaxPress**: Ju, Ku & Chang, 2023
 - **GATK/Mutect2**: Van der Auwera & O'Connor, *Bioinformatics Data Skills*, 2020
 - **OptiType**: Szolek et al., *Bioinformatics*, 2014
-- **LinearFold**: Huang et al., *ISMB*, 2019
 - **IMPROVE ranking weights**: Frontiers in Immunology, 2024

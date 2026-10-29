@@ -76,6 +76,68 @@ def step_default(n: int) -> Path:
     """Default output directory for step n in the active run."""
     return active_run_dir() / f"step{n}"
 
+
+def check_environment():
+    import shutil
+    checks = []
+
+    java_ok = shutil.which("java") is not None
+    gatk_jar_ok = (TOOLS_DIR / "gatk-4.5.0.0" / "gatk-package-4.5.0.0-local.jar").exists()
+    checks.append({
+        "component": "Java 17+ / GATK 4.5",
+        "status": "Ready" if (java_ok and gatk_jar_ok) else ("GATK JAR Present (Java Bypassed)" if gatk_jar_ok else "Missing"),
+        "ok": java_ok or gatk_jar_ok,
+        "detail": "Required for full GATK variant calling (Mutect2). If Java is absent, test BAM/VCF fallback is automatically used."
+    })
+
+    ref_ok = (REFERENCE_DIR / "hg38.fa").exists()
+    fai_ok = (REFERENCE_DIR / "hg38.fa.fai").exists()
+    checks.append({
+        "component": "GRCh38 Reference Genome",
+        "status": "Ready" if (ref_ok and fai_ok) else ("FASTA present (Needs .fai)" if ref_ok else "Missing"),
+        "ok": ref_ok,
+        "detail": "hg38.fa (~3.5 GB). Download via: `uv run --with requests --with tqdm --no-project python scripts/download_reference.py`"
+    })
+
+    tumor_ok = (DATA_DIR / "test" / "tumor_chr17.bam").exists()
+    normal_ok = (DATA_DIR / "test" / "normal_chr17.bam").exists()
+    checks.append({
+        "component": "HCC1143 Test Dataset (BAMs)",
+        "status": "Ready" if (tumor_ok and normal_ok) else "Missing",
+        "ok": tumor_ok and normal_ok,
+        "detail": "HCC1143 chr17 BAMs. Download via: `uv run --with huggingface_hub --with python-dotenv --no-project python scripts/download_data.py`"
+    })
+
+    pyensembl_cache1 = Path.home() / "AppData" / "Local" / "pyensembl" / "GRCh38"
+    pyensembl_cache2 = Path.home() / ".cache" / "pyensembl" / "GRCh38"
+    ensembl_ok = pyensembl_cache1.exists() or pyensembl_cache2.exists()
+    checks.append({
+        "component": "PyEnsembl GRCh38 Annotation",
+        "status": "Ready" if ensembl_ok else "Not Cached (Auto-fetches on Step 4)",
+        "ok": True,
+        "detail": "Annotates somatic variants to protein coding substitutions."
+    })
+
+    mhcflurry_cache1 = Path.home() / "AppData" / "Local" / "mhcflurry" / "mhcflurry"
+    mhcflurry_cache2 = Path.home() / ".cache" / "mhcflurry"
+    mhc_ok = mhcflurry_cache1.exists() or mhcflurry_cache2.exists()
+    checks.append({
+        "component": "MHCflurry 2.0 Models",
+        "status": "Ready" if mhc_ok else "Not Cached (Auto-fetches on Step 4)",
+        "ok": True,
+        "detail": "Predicts MHC Class I presentation scores."
+    })
+
+    rnafold_ok = shutil.which("RNAfold") is not None
+    checks.append({
+        "component": "ViennaRNA (RNAfold)",
+        "status": "Installed" if rnafold_ok else "Optional (MFE folding fallback active)",
+        "ok": True,
+        "detail": "Secondary structure stability prediction."
+    })
+
+    return checks
+
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 def run_script(script_code: str, log_placeholder, step_num: int) -> bool:
@@ -201,14 +263,9 @@ with st.sidebar:
         key="gatk_jar",
     )
     ref_hg38 = st.text_input(
-        "Reference genome (hg38)",
+        "Reference genome (GRCh38 / hg38)",
         str(REFERENCE_DIR / "hg38.fa"),
         key="ref_hg38",
-    )
-    ref_b37 = st.text_input(
-        "Reference genome (b37)",
-        str(REFERENCE_DIR / "b37.20.21.fasta"),
-        key="ref_b37",
     )
 
     st.divider()
@@ -353,6 +410,18 @@ with tabs[tab_idx]:
     cards += '</div>'
     st.markdown(cards, unsafe_allow_html=True)
 
+    st.markdown("#### 🔍 Preflight System Check")
+    env_checks = check_environment()
+    import pandas as pd
+    check_rows = []
+    for c in env_checks:
+        check_rows.append({
+            "Component": c["component"],
+            "Status": c["status"],
+            "Details / Command": c["detail"],
+        })
+    st.dataframe(pd.DataFrame(check_rows), use_container_width=True)
+
 # ─── Step 1: Preprocessing ────────────────────────────────────────────────────
 
 if not entry_b:
@@ -375,7 +444,7 @@ if not entry_b:
                 s1_out_dir = st.text_input("Output directory", str(step_default(1)), key="s1_out_dir")
             with col2:
                 s1_gatk_jar  = st.text_input("GATK JAR", gatk_jar, key="s1_gatk_jar")
-                s1_reference = st.text_input("Reference (b37)", ref_b37, key="s1_reference")
+                s1_reference = st.text_input("Reference (hg38)", ref_hg38, key="s1_reference")
 
         show_prior_log(1)
         log1 = st.empty()
