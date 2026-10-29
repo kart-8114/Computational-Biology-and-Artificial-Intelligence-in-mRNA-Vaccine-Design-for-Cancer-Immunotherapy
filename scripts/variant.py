@@ -1,4 +1,5 @@
 import gzip
+import os
 import shutil
 import subprocess
 import sys
@@ -23,8 +24,33 @@ def run(cmd, step_name):
         sys.exit(1)
     print(f"DONE: {step_name}")
 
+def find_java():
+    java_bin = shutil.which("java")
+    if java_bin:
+        return java_bin
+
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        candidate = Path(_Path(java_home)) / "bin" / ("java.exe" if sys.platform == "win32" else "java")
+        if candidate.exists():
+            return str(candidate)
+
+    if sys.platform == "win32":
+        adoptium = _Path("C:/Program Files/Eclipse Adoptium")
+        if adoptium.exists():
+            for jdk in adoptium.glob("jdk*/bin/java.exe"):
+                if jdk.exists():
+                    return str(jdk)
+        oracle = _Path("C:/Program Files/Java")
+        if oracle.exists():
+            for jdk in oracle.glob("jdk*/bin/java.exe"):
+                if jdk.exists():
+                    return str(jdk)
+    return None
+
 def gatk(args):
-    return ["java", "-jar", str(GATK_JAR)] + args
+    java_exec = find_java() or "java"
+    return [java_exec, "-jar", str(GATK_JAR)] + args
 
 def create_fallback_vcf(out_vcf):
     vcf_content = textwrap.dedent("""\
@@ -54,7 +80,7 @@ def main():
     raw_vcf      = OUT_DIR / "raw_variants.vcf.gz"
     filtered_vcf = OUT_DIR / "filtered_variants.vcf.gz"
 
-    java_bin = shutil.which("java")
+    java_bin = find_java()
     if not java_bin or not GATK_JAR.exists():
         print("\n[Warning] Java or GATK JAR not found in local environment.")
         print("Using pre-called somatic VCF for Step 2 output...")

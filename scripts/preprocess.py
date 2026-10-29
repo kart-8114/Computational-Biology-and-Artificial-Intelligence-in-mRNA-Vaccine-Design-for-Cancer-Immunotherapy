@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -24,8 +25,33 @@ def run(cmd, step_name):
         sys.exit(1)
     print(f"DONE: {step_name}")
 
+def find_java():
+    java_bin = shutil.which("java")
+    if java_bin:
+        return java_bin
+
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        candidate = Path(java_home) / "bin" / ("java.exe" if sys.platform == "win32" else "java")
+        if candidate.exists():
+            return str(candidate)
+
+    if sys.platform == "win32":
+        adoptium = Path("C:/Program Files/Eclipse Adoptium")
+        if adoptium.exists():
+            for jdk in adoptium.glob("jdk*/bin/java.exe"):
+                if jdk.exists():
+                    return str(jdk)
+        oracle = Path("C:/Program Files/Java")
+        if oracle.exists():
+            for jdk in oracle.glob("jdk*/bin/java.exe"):
+                if jdk.exists():
+                    return str(jdk)
+    return None
+
 def gatk(args):
-    return ["java", "-jar", str(GATK_JAR)] + args
+    java_exec = find_java() or "java"
+    return [java_exec, "-jar", str(GATK_JAR)] + args
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +69,7 @@ def main():
     deduped_bam  = OUT_DIR / "marked_duplicates.bam"
     metrics_file = OUT_DIR / "duplicate_metrics.txt"
 
-    java_bin = shutil.which("java")
+    java_bin = find_java()
     if java_bin and GATK_JAR.exists():
         run(gatk([
             "SortSam",
