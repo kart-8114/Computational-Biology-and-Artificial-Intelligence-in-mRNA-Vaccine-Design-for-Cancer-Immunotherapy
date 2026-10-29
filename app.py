@@ -916,4 +916,4 @@ with tabs[tab_idx]:
         if report_path.exists():
             st.success(f"Report written to `{report_path}`")
             with st.expander("Preview report", expanded=True):
-                st.markdown(report_path.read_text(), unsafe_allow_html=False)
+                st.markdown(report_path.read_text(encoding="utf-8"), unsafe_allow_html=False)

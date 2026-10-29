@@ -70,7 +70,7 @@ plt.rcParams.update({
 def load_hla():
     if not STEP3_HLA.exists():
         return []
-    return [l.strip() for l in STEP3_HLA.read_text().splitlines() if l.strip()]
+    return [l.strip() for l in STEP3_HLA.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
 def load_step5():
@@ -101,7 +101,7 @@ def load_step6_fasta():
     if not STEP6_FASTA.exists():
         return ""
     seq = ""
-    for line in STEP6_FASTA.read_text().splitlines():
+    for line in STEP6_FASTA.read_text(encoding="utf-8").splitlines():
         if not line.startswith(">"):
             seq += line.strip()
     return seq
@@ -111,7 +111,7 @@ def load_candidates():
     candidates = []
     for path in [STEP7_A, STEP7_B]:
         if path.exists():
-            candidates.append(json.loads(path.read_text()))
+            candidates.append(json.loads(path.read_text(encoding="utf-8")))
     return candidates
 
 
